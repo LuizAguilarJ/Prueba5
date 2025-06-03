@@ -1,15 +1,22 @@
 <!doctype html>
-<html>
+<html lang="es">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AR Video</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-detector.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/studio-backend/master/src/modules/marker/tools/gesture-handler.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/studio-backend/src/modules/marker/tools/gesture-detector.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/AR-js-org/studio-backend/src/modules/marker/tools/gesture-handler.js"></script>
 
     <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+
       #startOverlay {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
@@ -25,6 +32,54 @@
         cursor: pointer;
       }
     </style>
+  </head>
+
+  <body>
+    <div id="startOverlay">Toca para iniciar la experiencia</div>
+
+    <div id="arContainer" style="display: none;">
+      <a-scene
+        vr-mode-ui="enabled: false"
+        loading-screen="enabled: false"
+        arjs="sourceType: webcam; facingMode: environment; detectionMode: mono; maxDetectionRate: 30; debugUIEnabled: false"
+        embedded
+        gesture-detector
+      >
+        <a-assets>
+          <video
+            id="vid"
+            src="assets/asset.mp4"
+            preload="auto"
+            loop
+            crossorigin="anonymous"
+            webkit-playsinline
+            playsinline
+            muted
+          ></video>
+        </a-assets>
+
+        <a-marker
+          preset="custom"
+          type="pattern"
+          url="assets/marker.patt"
+          videohandler
+          emitevents="true"
+          cursor="rayOrigin: mouse;"
+        >
+          <a-plane
+            src="#vid"
+            width="1.5"
+            height="0.85"
+            position="0 0.1 0"
+            rotation="-90 0 0"
+            class="clickable"
+            gesture-handler
+          ></a-plane>
+        </a-marker>
+
+        <a-entity camera></a-entity>
+      </a-scene>
+    </div>
 
     <script>
       AFRAME.registerComponent("videohandler", {
@@ -32,14 +87,14 @@
           const marker = this.el;
           const videoEl = document.querySelector("#vid");
           let playing = false;
-          let timeout = null;
+          let timeout;
 
           marker.addEventListener("markerFound", async () => {
             if (videoEl.readyState >= 2 && !playing) {
               clearTimeout(timeout);
-              playing = true;
               try {
                 await videoEl.play();
+                playing = true;
               } catch (e) {
                 console.warn("Error al reproducir video:", e);
               }
@@ -50,74 +105,29 @@
             timeout = setTimeout(() => {
               videoEl.pause();
               playing = false;
-            }, 200); // evita paradas por pérdidas momentáneas
+            }, 200);
           });
         },
       });
 
-      // Esperamos la interacción del usuario antes de desbloquear audio
-      window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("startOverlay").addEventListener("click", async () => {
         const overlay = document.getElementById("startOverlay");
-        const video = document.getElementById("vid");
+        const container = document.getElementById("arContainer");
 
-        overlay.addEventListener("click", async () => {
-          overlay.style.display = "none";
-          video.muted = false;
-          try {
-            await video.play();
-            video.pause(); // se reproducirá cuando se detecte el marcador
-          } catch (e) {
-            console.error("No se pudo iniciar video:", e);
-          }
-        });
+        overlay.style.display = "none";
+        container.style.display = "block";
+
+        // El video ya está cargado, desbloqueamos el audio si es necesario
+        const video = document.getElementById("vid");
+        video.muted = false;
+
+        try {
+          await video.play();
+          video.pause(); // Reproducirá al detectar el marcador
+        } catch (e) {
+          console.error("No se pudo iniciar video:", e);
+        }
       });
     </script>
-  </head>
-
-  <body style="margin: 0; overflow: hidden">
-    <div id="startOverlay">Toca para iniciar la experiencia con sonido</div>
-
-    <a-scene
-      vr-mode-ui="enabled: false"
-      loading-screen="enabled: false"
-      arjs="sourceType: webcam; cameraConfig: {facingMode: 'environment'}; detectionMode: mono; maxDetectionRate: 30; debugUIEnabled: false;"
-      embedded
-      gesture-detector
-    >
-      <a-assets>
-        <video
-          id="vid"
-          src="assets/asset.mp4"
-          preload="auto"
-          loop
-          crossorigin="anonymous"
-          webkit-playsinline
-          playsinline
-          muted
-        ></video>
-      </a-assets>
-
-      <a-marker
-        type="pattern"
-        preset="custom"
-        url="assets/marker.patt"
-        videohandler
-        emitevents="true"
-        cursor="fuse: false; rayOrigin: mouse;"
-        id="markerA"
-      >
-        <a-plane
-          src="#vid"
-          width="1.5"
-          height="0.85"
-          position="0 0.1 0"
-          rotation="-90 0 0"
-          class="clickable"
-          gesture-handler
-        ></a-plane>
-      </a-marker>
-
-      <a-entity camera></a-entity>
-    </a-scene>
   </body>
 </html>
