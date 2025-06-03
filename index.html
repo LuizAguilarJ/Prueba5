@@ -31,9 +31,13 @@
         init: function () {
           const marker = this.el;
           const videoEl = document.querySelector("#vid");
+          let playing = false;
+          let timeout = null;
 
           marker.addEventListener("markerFound", async () => {
-            if (videoEl.readyState >= 2) {
+            if (videoEl.readyState >= 2 && !playing) {
+              clearTimeout(timeout);
+              playing = true;
               try {
                 await videoEl.play();
               } catch (e) {
@@ -43,12 +47,15 @@
           });
 
           marker.addEventListener("markerLost", () => {
-            videoEl.pause();
+            timeout = setTimeout(() => {
+              videoEl.pause();
+              playing = false;
+            }, 200); // evita paradas por pérdidas momentáneas
           });
         },
       });
 
-      // Esperamos la interacci�n del usuario antes de desbloquear audio
+      // Esperamos la interacción del usuario antes de desbloquear audio
       window.addEventListener("DOMContentLoaded", () => {
         const overlay = document.getElementById("startOverlay");
         const video = document.getElementById("vid");
@@ -58,7 +65,7 @@
           video.muted = false;
           try {
             await video.play();
-            video.pause(); // se reproducir� cuando se detecte el marcador
+            video.pause(); // se reproducirá cuando se detecte el marcador
           } catch (e) {
             console.error("No se pudo iniciar video:", e);
           }
@@ -73,7 +80,7 @@
     <a-scene
       vr-mode-ui="enabled: false"
       loading-screen="enabled: false"
-      arjs="sourceType: webcam; debugUIEnabled: false;"
+      arjs="sourceType: webcam; cameraConfig: {facingMode: 'environment'}; detectionMode: mono; maxDetectionRate: 30; debugUIEnabled: false;"
       embedded
       gesture-detector
     >
@@ -87,7 +94,6 @@
           webkit-playsinline
           playsinline
           muted
-          autoplay
         ></video>
       </a-assets>
 
@@ -100,7 +106,6 @@
         cursor="fuse: false; rayOrigin: mouse;"
         id="markerA"
       >
-        <!-- usamos a-plane para mayor compatibilidad con iOS -->
         <a-plane
           src="#vid"
           width="1.5"
